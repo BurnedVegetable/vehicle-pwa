@@ -1,197 +1,102 @@
-// ====================================================
-// 1) MSAL CONFIG (สำหรับ Login Microsoft)
-// ====================================================
-const msalConfig = {
-  auth: {
-    clientId: "YOUR_CLIENT_ID_HERE",
-    redirectUri: window.location.origin
-  }
+// ========= CONFIG =========
+const CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID";
+const API_KEY = "YOUR_GOOGLE_API_KEY";
+const SHEET_ID = "YOUR_SHEET_ID";
+
+const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
+
+// ========= INIT =========
+function gapiLoaded() {
+  gapi.load("client:auth2", initClient);
+}
+
+function initClient() {
+  gapi.client.init({
+    apiKey: API_KEY,
+    clientId: CLIENT_ID,
+    scope: SCOPES
+  });
+}
+
+document.getElementById("btnLogin").onclick = async () => {
+  await gapi.auth2.getAuthInstance().signIn();
+  document.getElementById("app").style.display = "block";
 };
 
-const msalInstance = new msal.PublicClientApplication(msalConfig);
-let accessToken = "";
 
-
-// ====================================================
-// 2) LOGIN
-// ====================================================
-document.getElementById("btnLogin").onclick = login;
-
-async function login() {
-  try {
-    await msalInstance.loginPopup({
-      scopes: ["User.Read", "Files.ReadWrite"]
-    });
-
-    accessToken = await getToken();
-    document.getElementById("formSection").style.display = "block";
-  }
-  catch (err) {
-    alert("Login ไม่สำเร็จ");
-    console.log(err);
-  }
-}
-
-async function getToken() {
-  const resp = await msalInstance.acquireTokenSilent({
-    scopes: ["User.Read", "Files.ReadWrite"]
-  }).catch(() => msalInstance.acquireTokenPopup({
-    scopes: ["User.Read", "Files.ReadWrite"]
-  }));
-
-  return resp.accessToken;
+// ========= WRITE =========
+async function writeRow(values) {
+  return gapi.client.sheets.spreadsheets.values.append({
+    spreadsheetId: SHEET_ID,
+    range: "logs",
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    resource: { values: [values] }
+  });
 }
 
 
-// ====================================================
-// 3) EXCEL SESSION
-// ====================================================
-async function createExcelSession(filePath) {
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/me/drive/root:${filePath}:/workbook/createSession`,
-    {
-      method: "POST",
-      headers: { 
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ persistChanges: true })
-    }
-  );
-  return res.json();
+// ========= READ =========
+async function readLogs() {
+  const res = await gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: "logs"
+  });
+  return res.result.values || [];
 }
 
 
-// ====================================================
-// 4) WRITE ROW TO EXCEL
-// ====================================================
-async function appendToExcel(row) {
-  const filePath = "/vehicle-log.xlsx";
-  const session = await createExcelSession(filePath);
-
-  await fetch(
-    `https://graph.microsoft.com/v1.0/me/drive/root:${filePath}:/workbook/tables/LogsTable/rows/add`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        "workbook-session-id": session.id
-      },
-      body: JSON.stringify({ values: [row] })
-    }
-  );
-}
-
-
-// ====================================================
-// 5) READ DATA FROM EXCEL
-// ====================================================
-async function readExcelRows() {
-  const filePath = "/vehicle-log.xlsx";
-  const session = await createExcelSession(filePath);
-
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/me/drive/root:${filePath}:/workbook/tables/LogsTable/rows`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "workbook-session-id": session.id
-      }
-    }
-  );
-
-  const data = await res.json();
-  return data.value;
-}
-
-
-// ====================================================
-// 6) SAVE BUTTON
-// ====================================================
+// ========= SAVE BUTTON =========
 document.getElementById("btnSave").onclick = async () => {
 
   const row = [
     document.getElementById("dateInput").value,
     document.getElementById("vehicleInput").value,
-    Number(document.getElementById("distanceInput").value),
-    Number(document.getElementById("fuelInput").value)
+    document.getElementById("distanceInput").value,
+    document.getElementById("fuelInput").value
   ];
 
-  await appendToExcel(row);
-  alert("บันทึกข้อมูลเรียบร้อย!");
+  await writeRow(row);
+  alert("บันทึกเรียบร้อย!");
 };
 
 
-// ====================================================
-// 7) DASHBOARD ขั้นสูง
-// ====================================================
-document.getElementById("btnDashboard").onclick = loadDashboard;
+// ========= DASHBOARD =========
+document.getElementById("btnDashboard").onclick = async () => {
 
-async function loadDashboard() {
+  const rows = await readLogs();
+  rows.shift(); // remove header
 
-  const rows = await readExcelRows();
-
-  const monthlyDistance = {};
-  const monthlyCost = {};
-  const vehicleUsage = {};
+  const byMonth = {};
+  const costByMonth = {};
 
   rows.forEach(r => {
-    const c = r.values[0];
-
-    const date = new Date(c[0]);
+    const date = new Date(r[0]);
     const month = `${date.getFullYear()}-${date.getMonth()+1}`;
-    const vehicle = c[1];
-    const distance = Number(c[2]);
-    const fuel = Number(c[3]);
 
-    // สะสมระยะทางต่อเดือน
-    monthlyDistance[month] = (monthlyDistance[month] || 0) + distance;
+    const distance = Number(r[2] || 0);
+    const fuel = Number(r[3] || 0);
 
-    // สะสมค่าใช้จ่ายรายเดือน (mock price 35)
-    monthlyCost[month] = (monthlyCost[month] || 0) + (fuel * 35);
+    if (!byMonth[month]) byMonth[month] = 0;
+    byMonth[month] += distance;
 
-    // นับจำนวนการใช้งานแต่ละรถ
-    vehicleUsage[vehicle] = (vehicleUsage[vehicle] || 0) + 1;
+    if (!costByMonth[month]) costByMonth[month] = 0;
+    costByMonth[month] += fuel * 35;
   });
 
-  // 1) กราฟระยะทางรายเดือน
-  new Chart(document.getElementById("distanceMonthly"), {
+  new Chart(document.getElementById("distanceChart"), {
     type: "line",
     data: {
-      labels: Object.keys(monthlyDistance),
-      datasets: [{
-        label: "ระยะทางรวมรายเดือน (กม.)",
-        data: Object.values(monthlyDistance),
-        borderColor: "blue",
-        fill: false
-      }]
+      labels: Object.keys(byMonth),
+      datasets: [{ data: Object.values(byMonth), label: "ระยะทางรวม (กม.)" }]
     }
   });
 
-  // 2) กราฟค่าใช้จ่ายรายเดือน
-  new Chart(document.getElementById("costMonthly"), {
+  new Chart(document.getElementById("costChart"), {
     type: "bar",
     data: {
-      labels: Object.keys(monthlyCost),
-      datasets: [{
-        label: "ค่าใช้จ่ายรายเดือน (บาท)",
-        data: Object.values(monthlyCost),
-        backgroundColor: "orange"
-      }]
+      labels: Object.keys(costByMonth),
+      datasets: [{ data: Object.values(costByMonth), label: "ค่าใช้จ่าย (บาท)" }]
     }
   });
-
-  // 3) กราฟสัดส่วนรถที่ใช้งาน
-  new Chart(document.getElementById("vehicleUsage"), {
-    type: "doughnut",
-    data: {
-      labels: Object.keys(vehicleUsage),
-      datasets: [{
-        data: Object.values(vehicleUsage),
-        backgroundColor: ["blue", "green", "orange", "purple"]
-      }]
-    }
-  });
-}
+};
