@@ -1,7 +1,7 @@
 // ========= CONFIG =========
 const CLIENT_ID = "138952700999-cqqv535u827d2vkfneg0vtfldrucfulq.apps.googleusercontent.com";
 const API_KEY = "sheets.googleapis.com";
-const SHEET_ID = "https://docs.google.com/spreadsheets/d/1mDME0-n2I9mEe9H_eNUAcEmuq4Z4rJSIdasPuZ0ct7E/edit?usp=sharing";
+const SHEET_ID = "https://docs.google.com/spreadsheets/d/1mDME0-n2I9mEe9H_eNUAcEmuq4Z4rJSIdasPuZ0ct7E/edit";
 
 const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 
@@ -100,4 +100,5 @@ document.getElementById("btnDashboard").onclick = async () => {
     }
   });
 };
+
 
