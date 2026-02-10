@@ -1,69 +1,48 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Vehicle Log App</title>
-
-  manifest.json
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#ffffff">
 
+  https://accounts.google.com/gsi/clientscript>
+  https://apis.google.com/js/api.jsscript>
   https://cdn.jsdelivr.net/npm/chart.jsscript>
 
-  <style>
-    body { font-family: sans-serif; padding: 20px; }
-    input, button {
-      width: 100%; padding: 12px; margin-top: 10px;
-      font-size: 16px;
-    }
-    canvas { margin-top: 30px; }
-  </style>
 </head>
 
 <body>
 
-<h2>Vehicle Log App</h2>
+<h2>Vehicle Log App (Google Sheets)</h2>
 
-<button id="btnLogin">เข้าสู่ระบบ Microsoft</button>
+<button id="btnLogin">เข้าสู่ระบบ Google</button>
 
-<div id="formSection" style="display:none;">
+<div id="app" style="display:none;">
 
   <h3>บันทึกข้อมูล</h3>
 
-  <label>วันที่:</label>
-  <input type="date" id="dateInput">
+  <input id="dateInput" type="date">
+  <input id="vehicleInput" placeholder="ชื่อรถ">
+  <input id="distanceInput" type="number" placeholder="ระยะทาง (กม.)">
+  <input id="fuelInput" type="number" placeholder="ลิตร">
 
-  <label>ชื่อรถ:</label>
-  <input id="vehicleInput" placeholder="Honda City">
-
-  <label>ระยะทาง (กม.):</label>
-  <input type="number" id="distanceInput">
-
-  <label>น้ำมัน (ลิตร):</label>
-  <input type="number" id="fuelInput">
-
-  <button id="btnSave">บันทึกข้อมูล</button>
-
-  <hr>
+  <button id="btnSave">บันทึก</button>
 
   <h3>Dashboard</h3>
   <button id="btnDashboard">โหลด Dashboard</button>
 
-  <canvas id="distanceMonthly"></canvas>
-  <canvas id="costMonthly"></canvas>
-  <canvas id="vehicleUsage"></canvas>
+  <canvas id="distanceChart"></canvas>
+  <canvas id="costChart"></canvas>
 
 </div>
 
-<script src="app.js"></script>
+app.jsscript>
 
 <script>
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js");
-}
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 </script>
 
 </body>
-
 </html>
